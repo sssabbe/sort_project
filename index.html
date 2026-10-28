@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эволюция алгоритмов сортировки</title>
+    <style>
+        /* Импорт строгих шрифтов */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Montserrat:wght@500;700&display=swap');
+
+        :root {
+            --bg-color: #121212;         /* Глубокий графит */
+            --surface-color: #1e1e1e;    /* Карточки */
+            --border-color: #333333;     /* Рамки */
+            --text-main: #e0e0e0;        /* Основной текст */
+            --text-muted: #888888;       /* Второстепенный текст */
+            --accent-gold: #d4af37;      /* Благородный золотой (желтый) */
+            --accent-gold-hover: #f1c40f;/* Яркий золотой */
+            --bar-default: #404040;      /* Темно-серые столбики */
+            --bar-active: #d4af37;       /* Золотой при сравнении */
+            --bar-sorted: #4CAF50;       /* Строгий зеленый для финала (или можно тоже золотой) */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Шапка */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0 0 10px 0;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        /* Панель управления */
+        .controls {
+            display: flex;
+            gap: 20px;
+            background-color: var(--surface-color);
+            padding: 25px 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 1000px;
+            box-sizing: border-box;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        select, button {
+            background-color: #2a2a2a;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        select:hover, button:hover {
+            border-color: var(--accent-gold);
+        }
+
+        /* Кнопки */
+        button {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button.primary {
+            background-color: var(--accent-gold);
+            color: #121212;
+            border: none;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        button.primary:hover:not(:disabled) {
+            background-color: var(--accent-gold-hover);
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background-color: #333;
+            color: #666;
+            border-color: #333;
+            box-shadow: none;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Ползунок */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 150px;
+            background: transparent;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: var(--accent-gold);
+            cursor: pointer;
+            margin-top: -6px;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: var(--border-color);
+            border-radius: 2px;
+        }
+
+        /* Зона визуализации */
+        .visualizer-wrapper {
+            width: 100%;
+            max-width: 1200px;
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 30px;
+            box-sizing: border-box;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .visualizer-container {
+            width: 100%;
+            height: 400px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 3px;
+            border-bottom: 2px solid var(--border-color); /* Базовая линия */
+        }
+
+        .bar {
+            flex-grow: 1;
+            background-color: var(--bar-default);
+            border-radius: 2px 2px 0 0;
+            transition: height 0.15s ease, background-color 0.15s ease;
+        }
+
+        .bar.compare {
+            background-color: var(--accent-gold);
+        }
+
+        .bar.sorted {
+            background-color: var(--text-muted); /* Или var(--accent-gold), если хотите всё золотое */
+        }
+
+        /* Статистика */
+        .stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 25px;
+            font-size: 14px;
+            color: var(--text-muted);
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        .stats div {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats span {
+            color: var(--accent-gold);
+            font-size: 18px;
+            font-weight: 700;
+            font-family: 'Montserrat', sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Эволюция алгоритмов сортировки</h1>
+        <div class="subtitle">Сравнительный анализ производительности</div>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Алгоритм</label>
+            <select id="algoSelect">
+                <option value="bubble">Пузырьковая</option>
+                <option value="selection">Выбором</option>
+                <option value="insertion">Вставками</option>
+                <option value="quick">Быстрая</option>
+                <option value="merge">Слиянием</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Действия</label>
+            <div style="display: flex; gap: 10px;">
+                <button id="generateBtn">Сгенерировать</button>
+                <button id="sortBtn" class="primary">Запустить</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Скорость анимации</label>
+            <input type="range" id="speedRange" min="1" max="100" value="50">
+        </div>
+    </div>
+
+    <div class="visualizer-wrapper">
+        <div class="visualizer-container" id="container"></div>
+        
+        <div class="stats">
+            <div>Сравнений: <span id="comparisons">0</span></div>
+            <div>Перестановок: <span id="swaps">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        let array = [];
+        let isSorting = false;
+        let delay = 50; 
+        const container = document.getElementById('container');
+        const comparisonsSpan = document.getElementById('comparisons');
+        const swapsSpan = document.getElementById('swaps');
+        let comparisons = 0;
+        let swaps = 0;
+
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        document.getElementById('speedRange').addEventListener('input', (e) => {
+            // Инвертируем значение: больше ползунок = меньше задержка
+            delay = 105 - e.target.value; 
+        });
+
+        function generateArray() {
+            if (isSorting) return;
+            array = [];
+            container.innerHTML = '';
+            comparisons = 0;
+            swaps = 0;
+            updateStats();
+            
+            const size = 45; // Оптимальное количество для сбалансированного вида
+            for (let i = 0; i < size; i++) {
+                const val = Math.floor(Math.random() * 95) + 5; // От 5 до 100
+                array.push(val);
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.style.height = `${val}%`;
+                container.appendChild(bar);
+            }
+        }
+
+        function updateStats() {
+            comparisonsSpan.innerText = comparisons;
+            swapsSpan.innerText = swaps;
+        }
+
+        function updateBars(indices, isSorted = false) {
+            const bars = container.children;
+            for (let i = 0; i < bars.length; i++) {
+                // Убираем классы активности, если они были
+                bars[i].classList.remove('compare');
+                if (!isSorted) bars[i].classList.remove('sorted');
+                
+                // Добавляем класс активности для текущих индексов
+                if (indices && indices.includes(i)) {
+                    bars[i].classList.add('compare');
+                }
+            }
+            if (isSorted) {
+                for(let i=0; i<bars.length; i++) bars[i].classList.add('sorted');
+            }
+        }
+
+        async function swap(i, j) {
+            swaps++;
+            updateStats();
+            updateBars([i, j]);
+            await sleep(delay);
+            
+            const bars = container.children;
+            let tempHeight = bars[i].style.height;
+            bars[i].style.height = bars[j].style.height;
+            bars[j].style.height = tempHeight;
+
+            let tempVal = array[i];
+            array[i] = array[j];
+            array[j] = tempVal;
+            
+            updateBars([i, j]);
+            await sleep(delay);
+        }
+
+        async function compare() {
+            comparisons++;
+            updateStats();
+            await sleep(delay / 2);
+        }
+
+        // --- АЛГОРИТМЫ ---
+
+        async function bubbleSort() {
+            const n = array.length;
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n - i - 1; j++) {
+                    await compare();
+                    updateBars([j, j+1]);
+                    if (array[j] > array[j + 1]) {
+                        await swap(j, j + 1);
+                    }
+                }
+            }
+        }
+
+        async function selectionSort() {
+            const n = array.length;
+            for (let i = 0; i < n; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < n; j++) {
+                    await compare();
+                    updateBars([minIdx, j]);
+                    if (array[j] < array[minIdx]) {
+                        minIdx = j;
+                    }
+                }
+                if (minIdx !== i) {
+                    await swap(i, minIdx);
+                }
+            }
+        }
+
+        async function insertionSort() {
+            const n = array.length;
+            for (let i = 1; i < n; i++) {
+                let key = array[i];
+                let j = i - 1;
+                updateBars([i]);
+                await sleep(delay);
+                while (j >= 0 && array[j] > key) {
+                    await compare();
+                    updateBars([j, j+1]);
+                    array[j + 1] = array[j];
+                    container.children[j + 1].style.height = container.children[j].style.height;
+                    await sleep(delay);
+                    swaps++;
+                    updateStats();
+                    j--;
+                }
+                array[j + 1] = key;
+                container.children[j + 1].style.height = `${key}%`;
+                updateBars([j+1]);
+                await sleep(delay);
+            }
+        }
+
+        async function quickSort(low = 0, high = array.length - 1) {
+            if (low < high) {
+                let pi = await partition(low, high);
+                await quickSort(low, pi - 1);
+                await quickSort(pi + 1, high);
+            }
+        }
+
+        async function partition(low, high) {
+            let pivot = array[high];
+            let i = (low - 1);
+            updateBars([high]);
+            for (let j = low; j < high; j++) {
+                await compare();
+                updateBars([j, high]);
+                if (array[j] < pivot) {
+                    i++;
+                    await swap(i, j);
+                }
+            }
+            await swap(i + 1, high);
+            return (i + 1);
+        }
+
+        async function mergeSort(l = 0, r = array.length - 1) {
+            if (l < r) {
+                let m = Math.floor((l + r) / 2);
+                await mergeSort(l, m);
+                await mergeSort(m + 1, r);
+                await merge(l, m, r);
+            }
+        }
+
+        async function merge(l, m, r) {
+            let n1 = m - l + 1;
+            let n2 = r - m;
+            let L = new Array(n1);
+            let R = new Array(n2);
+
+            for (let i = 0; i < n1; i++) L[i] = array[l + i];
+            for (let j = 0; j < n2; j++) R[j] = array[m + 1 + j];
+
+            let i = 0, j = 0, k = l;
+
+            while (i < n1 && j < n2) {
+                await compare();
+                updateBars([l + i, m + 1 + j]);
+                if (L[i] <= R[j]) {
+                    array[k] = L[i];
+                    container.children[k].style.height = `${L[i]}%`;
+                    i++;
+                } else {
+                    array[k] = R[j];
+                    container.children[k].style.height = `${R[j]}%`;
+                    j++;
+                }
+                swaps++; 
+                updateStats();
+                k++;
+                await sleep(delay);
+            }
+
+            while (i < n1) {
+                array[k] = L[i];
+                container.children[k].style.height = `${L[i]}%`;
+                i++; k++;
+                swaps++;
+                updateStats();
+                await sleep(delay);
+            }
+
+            while (j < n2) {
+                array[k] = R[j];
+                container.children[k].style.height = `${R[j]}%`;
+                j++; k++;
+                swaps++;
+                updateStats();
+                await sleep(delay);
+            }
+        }
+
+        // Привязка событий
+        document.getElementById('generateBtn').addEventListener('click', generateArray);
+        
+        document.getElementById('sortBtn').addEventListener('click', async () => {
+            if (isSorting) return;
+            isSorting = true;
+            const btn = document.getElementById('sortBtn');
+            btn.disabled = true;
+            btn.innerText = "В процессе...";
+            
+            // Сбрасываем финальную заливку
+            Array.from(container.children).forEach(bar => bar.classList.remove('sorted'));
+
+            const algo = document.getElementById('algoSelect').value;
+            
+            if (algo === 'bubble') await bubbleSort();
+            else if (algo === 'selection') await selectionSort();
+            else if (algo === 'insertion') await insertionSort();
+            else if (algo === 'quick') await quickSort();
+            else if (algo === 'merge') await mergeSort();
+
+            updateBars(null, true); 
+            
+            isSorting = false;
+            btn.disabled = false;
+            btn.innerText = "Запустить";
+        });
+
+        // Первичная генерация
+        generateArray();
+    </script>
+</body>
+</html>
